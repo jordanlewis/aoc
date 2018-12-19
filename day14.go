@@ -5,7 +5,7 @@ import (
 	"strconv"
 )
 
-func main() {
+func main2() {
 	//s := []int{5, 9, 4, 1, 4}
 	s := []int{0, 4, 7, 8, 0, 1}
 	a := make([]int, 2, 399200000)
