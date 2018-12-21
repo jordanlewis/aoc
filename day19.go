@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const s = `addi 2 16 2
+const s19 = `addi 2 16 2
 seti 1 0 4
 seti 1 5 5
 mulr 4 5 1
@@ -150,12 +150,12 @@ func seti(input []int, a, b, c int) {
 	input[c] = a
 }
 
-func main() {
+func main3() {
 	var instrs []func([]int, int, int, int)
 	var args [][]int
 	ip := 2
 	register := []int{1, 0, 0, 0, 0, 0}
-	for _, line := range strings.Split(s, "\n") {
+	for _, line := range strings.Split(s19, "\n") {
 		fields := strings.Split(line, " ")
 		instrs = append(instrs, m[fields[0]])
 		a, _ := strconv.Atoi(fields[1])
