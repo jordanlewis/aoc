@@ -1,24 +1,49 @@
 const std = @import("std");
 
-pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+const rps = enum(u8) {
+    rock,
+    paper,
+    scissors,
+    pub fn str(self: rps) []const u8 {
+        return switch (self) {
+            rps.rock => "rock",
+            rps.paper => "paper",
+            rps.scissors => "scissors",
+        };
+    }
+};
 
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
-
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
-
-    try bw.flush(); // don't forget to flush!
+pub fn parseRps(in: u8) !rps {
+    return switch (in) {
+        'A', 'X' => rps.rock,
+        'B', 'Y' => rps.paper,
+        'C', 'Z' => rps.scissors,
+        else => unreachable,
+    };
 }
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+// 0 if loss, 3 if draw, 6 if won
+var rpsScores: [3][3]u8 = .{ .{ 3, 0, 6 }, .{ 6, 3, 0 }, .{ 0, 6, 3 } };
+
+pub fn evalRps(l: rps, r: rps) u8 {
+    const i = @enumToInt(l);
+    const j = @enumToInt(r);
+    return rpsScores[i][j];
+}
+
+pub fn main() !void {
+    const stdin = std.io.getStdIn().reader();
+    const stdout = std.io.getStdOut().writer();
+    var buffer: [1024]u8 = undefined;
+    var scoreSum: i64 = 0;
+    while (try stdin.readUntilDelimiterOrEof(buffer[0..], '\n')) |line| {
+        const them = try parseRps(line[0]);
+        const us = try parseRps(line[2]);
+        const score = evalRps(us, them);
+        // The score is the ordinal value of the RPS, plus the score.
+        // Add 1 since the enum is 0-indexed.
+        const total = @enumToInt(us) + 1 + score;
+        scoreSum += total;
+    }
+    try stdout.print("{d}\n", .{scoreSum});
 }
