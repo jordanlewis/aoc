@@ -17,10 +17,12 @@ pub fn main() !void {
     var part2: u64 = 0;
     var nLine: u64 = 0;
     while (try stdin.readUntilDelimiterOrEof(buffer[0..], '\n')) |line| : (nLine += 1) {
+        //var iter = tokenize(u8, line, " ");
         for (line) |val, i| {
+            //var s = [_]u8{val};
+            //var n = try parseInt(i8, &s, 10);
             print("{d}:{d} = {d}\n", .{ nLine, i, val });
         }
-        nLine += 1;
     }
     print("part 1: {d}\n", .{part1});
     print("part 2: {d}\n", .{part2});
