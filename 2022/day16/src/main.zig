@@ -99,7 +99,7 @@ pub fn main() !void {
     var memo = std.AutoHashMap(key, u64).init(allocator);
     defer memo.deinit();
 
-    part2 = try recurse2(&memo, valves, "AA", "AA", 1, b);
+    part2 = try recurse2(&memo, valves, "AA", "AA", "", "", 1, b);
 
     print("part 2: {d}\n", .{part2});
 }
@@ -109,8 +109,8 @@ pub fn main() !void {
 // valve state
 
 // returns the most pressure that could be released starting at input m and id.
-fn recurse2(memo: *std.AutoHashMap(key, u64), valves: std.StringHashMap(*room), id1: []const u8, id2: []const u8, m: u64, b: std.bit_set.IntegerBitSet(64)) !u64 {
-    if (m > 26 or b.mask == 1 << 64) {
+fn recurse2(memo: *std.AutoHashMap(key, u64), valves: std.StringHashMap(*room), id1: []const u8, id2: []const u8, lastid1: []const u8, lastid2: []const u8, m: u64, b: std.bit_set.IntegerBitSet(64)) !u64 {
+    if (m >= 26 or b.mask == 1 << 64) {
         // We have no more minutes, compare total and backtrack.
         //if (curTotal > max) {
         //    max = curTotal;
@@ -118,13 +118,18 @@ fn recurse2(memo: *std.AutoHashMap(key, u64), valves: std.StringHashMap(*room), 
         return 0;
     }
 
-    var me: []const u8 = undefined;
-    var el: []const u8 = undefined;
-
     //print("entering {d} {s}\n", .{m, id});
     // Total flow is r.rate * 30 - m;
     var r = valves.get(id1).?;
     var r2 = valves.get(id2).?;
+
+    if (m == 25) {
+        if (r.rate == 0 and r2.rate == 0) {
+            return 0;
+        }
+    }
+
+
     var k = key{.m = m, .b = b, .id1 = undefined, .id2 = undefined};
     if (std.mem.lessThan(u8, id2, id1)) {
         std.mem.copy(u8, &k.id1, id2);
@@ -149,16 +154,14 @@ fn recurse2(memo: *std.AutoHashMap(key, u64), valves: std.StringHashMap(*room), 
         newB.set(r.idx);
         //print("{s}: gives {d}\n", .{id, totalFlow});
 
-        if (!std.mem.eql(u8, id1, id2) or r2.rate != 0) {
+        if (!std.mem.eql(u8, id1, id2) and r2.rate != 0) {
             // Have the elephant open its valve!!!
             var elephantRate = r2.rate;
             r2.rate = 0;
             var elephantFlow = (elephantRate * (26 - m));
             newB.set(r2.idx);
-            var found = try recurse2(memo, valves, id1, id2, m+1, newB) + totalFlow + elephantFlow;
+            var found = try recurse2(memo, valves, id1, id2, id1, id2, m+1, newB) + totalFlow + elephantFlow;
             if (found > curMax) {
-                me = "@@";
-                el = "@@";
                 curMax = found;
             }
             newB.unset(r2.idx);
@@ -166,17 +169,21 @@ fn recurse2(memo: *std.AutoHashMap(key, u64), valves: std.StringHashMap(*room), 
         }
 
         // Move the elephant!!!!
-        for (r2.exits.items) |*item| {
-            var found = try recurse2(memo, valves, id1, item.*, m+1, newB) + totalFlow;
+        for (r2.exits.items) |item| {
+            if (std.mem.eql(u8, item, lastid2)) {
+                continue;
+            }
+            var found = try recurse2(memo, valves, id1, item, id1, id2, m+1, newB) + totalFlow;
             if (found > curMax) {
-                me = "@@";
-                el = item.*;
                 curMax = found;
             }
         }
         r.rate = oldRate;
     }
-    for (r.exits.items) |*item| {
+    for (r.exits.items) |item| {
+        if (std.mem.eql(u8, item, lastid1)) {
+            continue;
+        }
         // Try having the elephant open the valve.
         if (r2.rate > 0) {
             var oldRate = r2.rate;
@@ -184,22 +191,21 @@ fn recurse2(memo: *std.AutoHashMap(key, u64), valves: std.StringHashMap(*room), 
             var totalFlow = (oldRate * (26 - m));
             var newB = b;
             newB.set(r2.idx);
-            var found = try recurse2(memo, valves, item.*, id2, m+1, newB) + totalFlow;
+            var found = try recurse2(memo, valves, item, id2, id1, id2, m+1, newB) + totalFlow;
             if (found > curMax) {
                 curMax = found;
-                me = item.*;
-                el = id2;
             }
             r2.rate = oldRate;
         }
         //print("{s}: gives {d}\n", .{id, totalFlow});
         // Try moving the elephant.
-        for (r2.exits.items) |*elephantItem| {
-            var found = try recurse2(memo, valves, item.*, elephantItem.*, m+1, b);
+        for (r2.exits.items) |elephantItem| {
+            if (std.mem.eql(u8, elephantItem, lastid2)) {
+                continue;
+            }
+            var found = try recurse2(memo, valves, item, elephantItem, id1, id2, m+1, b);
             if (found > curMax) {
                 curMax = found;
-                me = item.*;
-                el = elephantItem.*;
             }
         }
     }
