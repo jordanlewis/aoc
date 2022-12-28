@@ -14,8 +14,6 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-    const ptr = try allocator.create(i32);
-    print("ptr={*}\n", .{ptr});
 
     var buffer: [1024]u8 = undefined;
     var maxScore: u64 = 0;
