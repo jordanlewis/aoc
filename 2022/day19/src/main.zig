@@ -34,7 +34,7 @@ const cache = struct {
     memo: std.AutoHashMap(state, u64),
 };
 
-const maxMinutes = 24;
+const maxMinutes = 32;
 pub fn main() !void {
     const stdin = std.io.getStdIn().reader();
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
@@ -62,7 +62,7 @@ pub fn main() !void {
         try blueprints.append(b);
     }
 
-    for (blueprints.items) |b, i| {
+    for (blueprints.items[0..3]) |b, i| {
         print("{any}\n", .{b});
         var s = std.mem.zeroes(state);
         s.minutes = 1;
