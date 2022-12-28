@@ -1,8 +1,8 @@
 const std = @import("std");
+const print = std.debug.print;
 
 pub fn main() !void {
     const stdin = std.io.getStdIn().reader();
-    const stdout = std.io.getStdOut().writer();
     var buffer: [1024]u8 = undefined;
     var prioritiesSum: u64 = 0;
     var part2PrioritiesSum: u64 = 0;
@@ -49,6 +49,6 @@ pub fn main() !void {
             nGroup = 0;
         }
     }
-    try stdout.print("part 1: {d}\n", .{prioritiesSum});
-    try stdout.print("part 2: {d}\n", .{part2PrioritiesSum});
+    print("part 1: {d}\n", .{prioritiesSum});
+    print("part 2: {d}\n", .{part2PrioritiesSum});
 }
