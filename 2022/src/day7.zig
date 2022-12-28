@@ -23,8 +23,6 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
-    const ptr = try allocator.create(i32);
-    print("ptr={*}\n", .{ptr});
 
     allDirs = ArrayList(i32).init(allocator);
 
@@ -60,9 +58,9 @@ pub fn main() !void {
                 cur = cur.parent.?;
                 continue;
             }
-            print("searching for {s}\n", .{newdir});
+            //print("searching for {s}\n", .{newdir});
             for (cur.dirs.items) |child| {
-                print("{s}\n", .{child.name});
+                //print("{s}\n", .{child.name});
                 if (std.mem.eql(u8, child.name, newdir)) {
                     cur = child;
                     break;
@@ -92,7 +90,7 @@ pub fn main() !void {
     std.sort.sort(i32, allDirs.items, {}, comptime std.sort.asc(i32));
 
     for (allDirs.items) |d| {
-        print("total size {}, max size {}, found {}, unused {}, remaining {}\n", .{ totalsize, maxsize, d, cap - (totalsize - d), totalsize - d });
+        //print("total size {}, max size {}, found {}, unused {}, remaining {}\n", .{ totalsize, maxsize, d, cap - (totalsize - d), totalsize - d });
         if (cap - (totalsize - d) >= maxsize) {
             part2 = d;
             break;
@@ -112,7 +110,7 @@ fn recurse(d: *dir) !i32 {
         size += try recurse(child);
     }
     if (size <= 100000) {
-        print("{}\n", .{size});
+        //print("{}\n", .{size});
         part1 += size;
     }
     try allDirs.append(size);
