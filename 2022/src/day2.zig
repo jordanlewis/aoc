@@ -1,4 +1,5 @@
 const std = @import("std");
+const print = std.debug.print;
 
 const rps = enum(u8) {
     rock,
@@ -41,7 +42,6 @@ pub fn evalRps(l: rps, r: rps) u8 {
 
 pub fn main() !void {
     const stdin = std.io.getStdIn().reader();
-    const stdout = std.io.getStdOut().writer();
     var buffer: [1024]u8 = undefined;
     var scoreSum: i64 = 0;
     var part2ScoreSum: i64 = 0;
@@ -59,6 +59,6 @@ pub fn main() !void {
         const part2total = @enumToInt(shouldPlay) + 1 + (@enumToInt(us) * 3);
         part2ScoreSum += part2total;
     }
-    try stdout.print("part 1: {d}\n", .{scoreSum});
-    try stdout.print("part 2: {d}\n", .{part2ScoreSum});
+    print("part 1: {d}\n", .{scoreSum});
+    print("part 2: {d}\n", .{part2ScoreSum});
 }
