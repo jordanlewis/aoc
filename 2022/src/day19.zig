@@ -74,8 +74,8 @@ pub fn main() !void {
         defer c.maxGeoRobos.deinit();
         defer c.memo.deinit();
         var maxGeodes = recurse(&c, b, s);
-        var quality = (i+1) * maxGeodes;
-        print("Blueprint {d}: max {d} quality {d}\n", .{i+1, maxGeodes, quality});
+        var quality = (i + 1) * maxGeodes;
+        print("Blueprint {d}: max {d} quality {d}\n", .{ i + 1, maxGeodes, quality });
         part1 += quality;
     }
     print("cache {d}\n", .{cacheHits});
@@ -101,7 +101,7 @@ fn recurse(c: *cache, b: blueprint, s: state) u64 {
     }
     var canBuildGeo = s.mats[ore] >= b.geoOreCost and s.mats[obs] >= b.geoObsCost;
 
-    if (!canBuildGeo and s.minutes == maxMinutes-1) {
+    if (!canBuildGeo and s.minutes == maxMinutes - 1) {
         return s.robos[geo] * 2;
     }
 
@@ -166,11 +166,11 @@ fn recurse(c: *cache, b: blueprint, s: state) u64 {
             curMax = @max(recurse(c, b, newS), curMax);
         }
 
-            // Do nothing.
-            var newS = s;
-            newS.minutes += 1;
-            newS.mats = s.mats + s.robos;
-            curMax = @max(recurse(c, b, newS), curMax);
+        // Do nothing.
+        var newS = s;
+        newS.minutes += 1;
+        newS.mats = s.mats + s.robos;
+        curMax = @max(recurse(c, b, newS), curMax);
     }
 
     var key = s;
