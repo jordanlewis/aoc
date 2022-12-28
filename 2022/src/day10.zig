@@ -8,11 +8,10 @@ var part1: i64 = 0;
 pub fn main() !void {
     const stdin = std.io.getStdIn().reader();
     var buffer: [1024]u8 = undefined;
-    var nLine: u64 = 0;
     var cycle: u64 = 0;
     var x: i64 = 1;
     var screen: [6][40]u8 = undefined;
-    while (try stdin.readUntilDelimiterOrEof(buffer[0..], '\n')) |line| : (nLine += 1) {
+    while (try stdin.readUntilDelimiterOrEof(buffer[0..], '\n')) |line| {
         var iter = tokenize(u8, line, " ");
         var instr = iter.next().?;
         if (instr[0] == 'n') {
