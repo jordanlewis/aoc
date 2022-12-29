@@ -61,58 +61,40 @@ pub fn main() !void {
         try map.put(mCopy, monk);
     }
 
-    part1 = recurse(map, "root");
+    part1 = findSum(map, "root", false).?;
 
     // part 2:
     var root = map.get("root").?;
-    var l = findSumOrNull(map, root.l);
+    var l = findSum(map, root.l, true);
     if (l) |val| {
         part2 = recurse2(map, root.r, val).?;
     } else {
-        part2 = recurse2(map, root.l, findSumOrNull(map, root.r).?).?;
+        part2 = recurse2(map, root.l, findSum(map, root.r, true).?).?;
     }
 
     print("part 1: {d}\n", .{part1});
     print("part 2: {d}\n", .{part2});
 }
 
-fn recurse(map: std.StringHashMap(*monkey), name: []const u8) i64 {
+fn findSum(map: std.StringHashMap(*monkey), name: []const u8, ignoreHuman: bool) ?i64 {
+    if (ignoreHuman and std.mem.eql(u8, name, "humn")) {
+        return null;
+    }
     var m = map.get(name).?;
     if (m.val) |n| {
         return n;
     }
-    var l = recurse(map, m.l);
-    var r = recurse(map, m.r);
+    var l = findSum(map, m.l, ignoreHuman);
+    var r = findSum(map, m.r, ignoreHuman);
+    if (l == null or r == null) {
+        return null;
+    }
     return switch (m.op) {
-        .plus => l + r,
-        .minus => l - r,
-        .mult => l * r,
-        .div => @divExact(l, r),
+        .plus => l.? + r.?,
+        .minus => l.? - r.?,
+        .mult => l.? * r.?,
+        .div => @divExact(l.?, r.?),
     };
-}
-
-fn findSumOrNull(map: std.StringHashMap(*monkey), name: []const u8) ?i64 {
-    if (std.mem.eql(u8, name, "humn")) {
-        return null;
-    }
-    var m = map.get(name).?;
-    if (m.val) |n| {
-        return n;
-    }
-    var lq = findSumOrNull(map, m.l);
-    var rq = findSumOrNull(map, m.r);
-    if (lq == null or rq == null) {
-        return null;
-    }
-    var l = lq.?;
-    var r = rq.?;
-    m.val = switch (m.op) {
-        .plus => l + r,
-        .minus => l - r,
-        .mult => l * r,
-        .div => @divExact(l, r),
-    };
-    return m.val.?;
 }
 
 //     11
@@ -133,16 +115,14 @@ fn recurse2(map: std.StringHashMap(*monkey), name: []const u8, exp: i64) ?i64 {
     if (std.mem.eql(u8, name, "humn")) {
         return exp;
     }
-
     var m = map.get(name).?;
-    var l = findSumOrNull(map, m.l);
+    var l = findSum(map, m.l, true);
     var val: i64 = undefined;
-    var constIsLeft = false;
+    var constIsLeft = l != null;
     if (l) |v| {
-        constIsLeft = true;
         val = v;
     } else {
-        val = findSumOrNull(map, m.r).?;
+        val = findSum(map, m.r, true).?;
     }
     var newExp: i64 = undefined;
     // Invert val
