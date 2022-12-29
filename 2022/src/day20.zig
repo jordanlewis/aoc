@@ -12,23 +12,20 @@ pub fn main() !void {
 
     var buffer: [1024]u8 = undefined;
     var nLine: usize = 0;
-    var ns1 = ArrayList(i64).init(allocator);
-    var ns2 = ArrayList(i64).init(allocator);
+    var ns = ArrayList(i64).init(allocator);
     // ords tells you the original position of the number currently at the input position.
     var ords = ArrayList(usize).init(allocator);
     // OrigPosToPos tells you the current position of the number originally at the input position.
     var origPosToPos = ArrayList(usize).init(allocator);
-    defer ns1.deinit();
-    defer ns2.deinit();
+    defer ns.deinit();
     defer ords.deinit();
     defer origPosToPos.deinit();
     while (try stdin.readUntilDelimiterOrEof(buffer[0..], '\n')) |line| : (nLine += 1) {
         var elt = try parseInt(i64, line, 10);
-        try ns1.append(elt);
-        try ns2.append(elt);
+        try ns.append(elt);
     }
-    try ords.resize(ns1.items.len);
-    try origPosToPos.resize(ns1.items.len);
+    try ords.resize(ns.items.len);
+    try origPosToPos.resize(ns.items.len);
 
     // Ords should be a map from i (the ordinal of the number we have to move next, in the original list)
     // to the ordinal of the number that we have to move in the new list.
@@ -41,10 +38,8 @@ pub fn main() !void {
 
     for ([_]i64{ 1, key }) |k, part| {
         var maxRounds: usize = 1;
-        var ns = ns1;
         if (part == 1) {
             maxRounds = 10;
-            ns = ns2;
         }
         for (ns.items) |n, i| {
             ords.items[i] = i;
@@ -53,11 +48,9 @@ pub fn main() !void {
         }
         var nRounds: usize = 0;
         while (nRounds < maxRounds) : (nRounds += 1) {
-            //print("list {any} ords {any} origPosToPos {any}\n", .{ ns.items, ords.items, origPosToPos.items });
-            for (origPosToPos.items) |ord| {
-                //print("list {any} ords {any} origPosToPos {any}\n", .{ ns.items, ords.items, origPosToPos.items });
+            for (origPosToPos.items) |ord, nPos| {
                 var len = @intCast(i64, ns.items.len);
-                var n = ns.items[ord];
+                var n = ns.items[nPos];
 
                 var newOrdI = @intCast(i64, ord) + @mod(n, len - 1);
                 var wrappedDown = newOrdI < 0;
@@ -69,13 +62,10 @@ pub fn main() !void {
                     newOrdI = @mod(newOrdI - 1, len);
                 }
                 var newOrd = @intCast(usize, newOrdI);
-                //print("ord={d} newOrd={d} item {d}\n", .{ ord, newOrd, n });
 
                 var oldOrd = ords.items[ord];
                 if (newOrd > ord) {
                     std.mem.copy(usize, ords.items[ord..newOrd], ords.items[ord + 1 .. newOrd + 1]);
-                    std.mem.copy(i64, ns.items[ord..newOrd], ns.items[ord + 1 .. newOrd + 1]);
-                    ns.items[newOrd] = n;
                     ords.items[newOrd] = oldOrd;
 
                     for (ords.items) |ord2, j| {
@@ -83,8 +73,6 @@ pub fn main() !void {
                     }
                 } else if (newOrd < ord) {
                     std.mem.copyBackwards(usize, ords.items[newOrd + 1 .. ord + 1], ords.items[newOrd..ord]);
-                    std.mem.copyBackwards(i64, ns.items[newOrd + 1 .. ord + 1], ns.items[newOrd..ord]);
-                    ns.items[newOrd] = n;
                     ords.items[newOrd] = oldOrd;
 
                     for (ords.items) |ord2, j| {
@@ -98,7 +86,7 @@ pub fn main() !void {
         var zeroPos: usize = 0;
         for (ns.items) |n, i| {
             if (n == 0) {
-                zeroPos = i;
+                zeroPos = origPosToPos.items[i];
                 break;
             }
         }
@@ -107,11 +95,8 @@ pub fn main() !void {
         var res: i64 = 0;
         for (coords) |coord| {
             var pos = zeroPos + coord;
-            print("{d}\n", .{ns.items[pos % ns.items.len]});
-            res += ns.items[pos % ns.items.len];
+            res += ns.items[ords.items[pos % ns.items.len]];
         }
         print("part {d}: {d}\n", .{ part + 1, res });
     }
-
-    //print("part 2: {d}\n", .{part2});
 }
