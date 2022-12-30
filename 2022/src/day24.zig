@@ -55,13 +55,13 @@ const timepoint = struct {
 
 const state = struct {
     allocator: std.mem.Allocator,
-    map: std.AutoHashMap(timepoint, u8),
+    map: std.AutoHashMap(point, u8),
+    board: std.ArrayList([]const u8),
     blizzards: ArrayList(*blizzard),
     exit: point,
     maxN: u32,
     maxX: i32,
     maxY: i32,
-    mod: u32,
 };
 
 pub fn main() !void {
@@ -70,7 +70,7 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var map = std.AutoHashMap(timepoint, u8).init(allocator);
+    var map = std.AutoHashMap(point, u8).init(allocator);
 
     var buffer: [1024]u8 = undefined;
     var part1: usize = 0;
@@ -78,28 +78,33 @@ pub fn main() !void {
     var y: i32 = 0;
     var maxX: i32 = 0;
     var blizzards = ArrayList(*blizzard).init(allocator);
-    while (try stdin.readUntilDelimiterOrEof(buffer[0..], '\n')) |line| : (y += 1) {
-        for (line) |val, x| {
-            if (@intCast(i32, x) > maxX) {
-                maxX = @intCast(i32, x);
-            }
-            //var n = try allocator.create(node);
-            var curPos = point{ @intCast(i32, x), y };
-            if (val == '#' or val == '.') {} else {
-                var b = try allocator.create(blizzard);
-                b.dir = facing.fromChar(val);
-                b.pos = curPos;
-                //n.c = val;
-                //try n.blizzards.append(b);
-                try blizzards.append(b);
-            }
-            //n.wall = val == '#';
-            //n.blizzards = std.ArrayList(*blizzard).init(allocator);
 
-            if (val != '.') {
-                try map.put(timepoint{ .p = curPos, .n = 0 }, val);
-            }
-        }
+    var board = ArrayList([]const u8).init(allocator);
+
+    while (try stdin.readUntilDelimiterOrEof(buffer[0..], '\n')) |line| : (y += 1) {
+        maxX = @intCast(i32, line.len) - 1;
+        try board.append(line);
+        //for (line) |val, x| {
+        //    if (@intCast(i32, x) > maxX) {
+        //        maxX = @intCast(i32, x);
+        //    }
+        //    //var n = try allocator.create(node);
+        //    var curPos = point{ @intCast(i32, x), y };
+        //    if (val == '#' or val == '.') {} else {
+        //        var b = try allocator.create(blizzard);
+        //        b.dir = facing.fromChar(val);
+        //        b.pos = curPos;
+        //        //n.c = val;
+        //        //try n.blizzards.append(b);
+        //        try blizzards.append(b);
+        //    }
+        //    //n.wall = val == '#';
+        //    //n.blizzards = std.ArrayList(*blizzard).init(allocator);
+
+        //    if (val != '.') {
+        //        try map.put(curPos, val);
+        //    }
+        //}
     }
     var maxY = y - 1;
     print("maxx,y {d} {d}\n", .{ maxX, maxY });
@@ -108,11 +113,11 @@ pub fn main() !void {
     var s = state{
         .allocator = allocator,
         .map = map,
+        .board = board,
         .blizzards = blizzards,
         .maxN = 0,
         .maxY = maxY,
         .maxX = maxX,
-        .mod = @intCast(u32, (maxY - 1)) * @intCast(u32, (maxX - 1)),
         .exit = exit,
     };
     part1 = solve(&s, timepoint{ .n = 1, .p = pos });
@@ -138,10 +143,6 @@ fn solve(s: *state, start: timepoint) usize {
     q.put(start.p, {}) catch unreachable;
     var n: usize = start.n;
     while (true) : (n += 1) {
-        var mapN = @mod(n, s.mod);
-        if (mapN > s.maxN) {
-            iterateBoard(s);
-        }
         var q2 = std.AutoHashMap(point, void).init(s.allocator);
         var iter = q.keyIterator();
         while (iter.next()) |pp| {
@@ -158,10 +159,10 @@ fn solve(s: *state, start: timepoint) usize {
                         continue;
                     }
                 }
-                if (s.map.get(timepoint{ .p = newPos, .n = mapN })) |_| {
-                    // Can't move here.
-                    continue;
-                }
+                if (s.board.items[@intCast(usize, @mod((newPos[1] - 1) - @intCast(i32, n), s.maxY - 1) + 1)][@intCast(usize, newPos[0])] == 'v') continue;
+                if (s.board.items[@intCast(usize, @mod((newPos[1] - 1) + @intCast(i32, n), s.maxY - 1) + 1)][@intCast(usize, newPos[0])] == '^') continue;
+                if (s.board.items[@intCast(usize, newPos[1])][@intCast(usize, @mod((newPos[0] - 1) - @intCast(i32, n), s.maxX - 1) + 1)] == '>') continue;
+                if (s.board.items[@intCast(usize, newPos[1])][@intCast(usize, @mod((newPos[0] - 1) + @intCast(i32, n), s.maxX - 1) + 1)] == '<') continue;
                 q2.put(newPos, {}) catch unreachable;
             }
         }
