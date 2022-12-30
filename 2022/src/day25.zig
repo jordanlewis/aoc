@@ -91,13 +91,4 @@ pub fn main() !void {
     }
     print("part 1: {s}\n", .{buf.items});
     buf.clearAndFree();
-    //}
-
-    // 24
-    // 5 => 4 // we write 1-
-    //     remainder is now 4
-    // 1 => 4 // we write 1-
-
-    //print("part 1: {s}\n", .{buf.items});
-    print("part 2: {d}\n", .{part2});
 }
