@@ -54,8 +54,7 @@ const timepoint = struct {
 };
 
 const state = struct {
-    memo: std.AutoHashMap(timepoint, u32),
-    alreadyBeen: std.AutoHashMap(timepoint, void),
+    allocator: std.mem.Allocator,
     map: std.AutoHashMap(timepoint, u8),
     blizzards: ArrayList(*blizzard),
     exit: point,
@@ -74,8 +73,8 @@ pub fn main() !void {
     var map = std.AutoHashMap(timepoint, u8).init(allocator);
 
     var buffer: [1024]u8 = undefined;
-    var part1: u64 = 0;
-    var part2: u64 = 0;
+    var part1: usize = 0;
+    var part2: usize = 0;
     var y: i32 = 0;
     var maxX: i32 = 0;
     var blizzards = ArrayList(*blizzard).init(allocator);
@@ -103,27 +102,24 @@ pub fn main() !void {
         }
     }
     var maxY = y - 1;
-    print("maxx,y {d} {d}", .{ maxX, maxY });
+    print("maxx,y {d} {d}\n", .{ maxX, maxY });
     var exit = point{ maxX - 1, maxY };
     var pos = point{ 1, 0 };
     var s = state{
+        .allocator = allocator,
         .map = map,
         .blizzards = blizzards,
         .maxN = 0,
         .maxY = maxY,
         .maxX = maxX,
-        .mod = @intCast(u32, (maxY - 2)) * @intCast(u32, (maxX - 2)),
+        .mod = @intCast(u32, (maxY - 1)) * @intCast(u32, (maxX - 1)),
         .exit = exit,
-        .memo = std.AutoHashMap(timepoint, u32).init(allocator),
-        .alreadyBeen = std.AutoHashMap(timepoint, void).init(allocator),
     };
-    iterateBoard(&s);
-
-    //var x: usize = 1;
-    //while (x < 10) : (x += 1) {
-    //    iterateBoard(&s, pos);
-    //}
-    part1 = recurse(&s, pos, 0);
+    part1 = solve(&s, timepoint{ .n = 1, .p = pos });
+    s.exit = pos;
+    var back = solve(&s, timepoint{ .n = part1, .p = exit });
+    s.exit = exit;
+    part2 = solve(&s, timepoint{ .n = back, .p = pos });
 
     print("part 1: {d}\n", .{part1});
     print("part 2: {d}\n", .{part2});
@@ -137,52 +133,41 @@ const adges = [_]point{
     point{ 0, 0 },
 };
 
-fn recurse(s: *state, pos: point, n: u32) u32 {
-    if (@reduce(.And, pos == s.exit)) {
-        return 0;
-    }
-    if (s.memo.get(timepoint{ .p = pos, .n = n })) |cached| {
-        return cached;
-    }
-    var modN = @mod(n, s.mod);
-    var modNPlusOne = @mod(n + 1, s.mod);
-    s.alreadyBeen.put(timepoint{ .p = pos, .n = modN }, {}) catch unreachable;
+fn solve(s: *state, start: timepoint) usize {
+    var q = std.AutoHashMap(point, void).init(s.allocator);
+    q.put(start.p, {}) catch unreachable;
+    var n: usize = start.n;
+    while (true) : (n += 1) {
+        var mapN = @mod(n, s.mod);
+        if (mapN > s.maxN) {
+            iterateBoard(s);
+        }
+        var q2 = std.AutoHashMap(point, void).init(s.allocator);
+        var iter = q.keyIterator();
+        while (iter.next()) |pp| {
+            var p = pp.*;
 
-    // Update board cache if we need to.
-    if (n > s.maxN) {
-        iterateBoard(s);
+            for (adges) |a| {
+                var newPos = p + a;
+                if (@reduce(.And, newPos == s.exit)) {
+                    return n;
+                }
+                if (newPos[0] <= 0 or newPos[0] >= s.maxX or newPos[1] <= 0 or newPos[1] >= s.maxY) {
+                    if (!@reduce(.And, newPos == start.p)) {
+                        // Can't walk off edge, but start pos is fine.
+                        continue;
+                    }
+                }
+                if (s.map.get(timepoint{ .p = newPos, .n = mapN })) |_| {
+                    // Can't move here.
+                    continue;
+                }
+                q2.put(newPos, {}) catch unreachable;
+            }
+        }
+        q.deinit();
+        q = q2;
     }
-    var best: ?u32 = null;
-    for (adges) |a| {
-        var newPos = pos + a;
-        if (@reduce(.And, newPos == s.exit)) {
-            return 1;
-        }
-        if (newPos[0] <= 0 or newPos[0] >= s.maxX or newPos[1] <= 0 or newPos[1] >= s.maxY) {
-            // Can't walk off edge.
-            continue;
-        }
-        if (s.map.get(timepoint{ .n = n + 1, .p = newPos })) |_| {
-            // Can't move here.
-            continue;
-        }
-        if (s.alreadyBeen.contains(timepoint{ .p = newPos, .n = modNPlusOne })) {
-            // Don't need to try things we've already tried.
-            continue;
-        }
-        print("Found viable point {d} {any}\n", .{ n, newPos });
-        // We can move here, try it...
-        var ret = recurse(s, newPos, n + 1);
-        if (best == null or ret < best.?) {
-            best = ret;
-        }
-    }
-    if (best == null) {
-        print("couldn't move?\n", .{});
-        unreachable;
-    }
-    s.memo.put(timepoint{ .p = pos, .n = n }, best.?) catch unreachable;
-    return best.?;
 }
 
 fn iterateBoard(s: *state) void {
@@ -215,11 +200,11 @@ fn iterateBoard(s: *state) void {
         }
         b.pos = newPos;
     }
-    print("Round {d}\n", .{s.maxN});
-    //printMap(s, pos);
+    //printMap(s, point{ 0, 0 });
 }
 
 fn printMap(s: *state, pos: point) void {
+    //print("Map at minute {d}\n", .{s.maxN});
     var foundGuy = false;
     var y: i32 = 0;
     while (y <= s.maxY) : (y += 1) {
