@@ -5,48 +5,6 @@ const parseInt = std.fmt.parseInt;
 const print = std.debug.print;
 
 const point = @Vector(2, i32);
-const facing = enum {
-    right,
-    down,
-    left,
-    up,
-    fn diff(self: facing) point {
-        return switch (self) {
-            .right => point{ 1, 0 },
-            .left => point{ -1, 0 },
-            .down => point{ 0, 1 },
-            .up => point{ 0, -1 },
-        };
-    }
-    fn fromChar(c: u8) facing {
-        return switch (c) {
-            '>' => .right,
-            '^' => .up,
-            'v' => .down,
-            '<' => .left,
-            else => unreachable,
-        };
-    }
-    fn char(self: facing) u8 {
-        return switch (self) {
-            .right => '>',
-            .left => '<',
-            .down => 'v',
-            .up => '^',
-        };
-    }
-};
-
-const blizzard = struct {
-    pos: point,
-    dir: facing,
-};
-
-const node = struct {
-    wall: bool,
-    //blizzards: std.ArrayList(*blizzard),
-    c: u8,
-};
 
 const timepoint = struct {
     p: point,
@@ -55,11 +13,8 @@ const timepoint = struct {
 
 const state = struct {
     allocator: std.mem.Allocator,
-    map: std.AutoHashMap(point, u8),
-    board: std.ArrayList([]const u8),
-    blizzards: ArrayList(*blizzard),
+    board: [][]const u8,
     exit: point,
-    maxN: u32,
     maxX: i32,
     maxY: i32,
 };
@@ -70,41 +25,18 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    var map = std.AutoHashMap(point, u8).init(allocator);
-
-    var buffer: [1024]u8 = undefined;
     var part1: usize = 0;
     var part2: usize = 0;
     var y: i32 = 0;
     var maxX: i32 = 0;
-    var blizzards = ArrayList(*blizzard).init(allocator);
 
     var board = ArrayList([]const u8).init(allocator);
 
-    while (try stdin.readUntilDelimiterOrEof(buffer[0..], '\n')) |line| : (y += 1) {
+    var input = try stdin.readAllAlloc(allocator, 1024 * 1024);
+    var it = std.mem.tokenize(u8, input, "\n");
+    while (it.next()) |line| : (y += 1) {
         maxX = @intCast(i32, line.len) - 1;
         try board.append(line);
-        //for (line) |val, x| {
-        //    if (@intCast(i32, x) > maxX) {
-        //        maxX = @intCast(i32, x);
-        //    }
-        //    //var n = try allocator.create(node);
-        //    var curPos = point{ @intCast(i32, x), y };
-        //    if (val == '#' or val == '.') {} else {
-        //        var b = try allocator.create(blizzard);
-        //        b.dir = facing.fromChar(val);
-        //        b.pos = curPos;
-        //        //n.c = val;
-        //        //try n.blizzards.append(b);
-        //        try blizzards.append(b);
-        //    }
-        //    //n.wall = val == '#';
-        //    //n.blizzards = std.ArrayList(*blizzard).init(allocator);
-
-        //    if (val != '.') {
-        //        try map.put(curPos, val);
-        //    }
-        //}
     }
     var maxY = y - 1;
     print("maxx,y {d} {d}\n", .{ maxX, maxY });
@@ -112,10 +44,7 @@ pub fn main() !void {
     var pos = point{ 1, 0 };
     var s = state{
         .allocator = allocator,
-        .map = map,
-        .board = board,
-        .blizzards = blizzards,
-        .maxN = 0,
+        .board = board.items,
         .maxY = maxY,
         .maxX = maxX,
         .exit = exit,
@@ -139,11 +68,13 @@ const adges = [_]point{
 };
 
 fn solve(s: *state, start: timepoint) usize {
-    var q = std.AutoHashMap(point, void).init(s.allocator);
+    var qv = std.AutoHashMap(point, void).init(s.allocator);
+    var q2v = std.AutoHashMap(point, void).init(s.allocator);
+    var q = &qv;
+    var q2 = &q2v;
     q.put(start.p, {}) catch unreachable;
     var n: usize = start.n;
     while (true) : (n += 1) {
-        var q2 = std.AutoHashMap(point, void).init(s.allocator);
         var iter = q.keyIterator();
         while (iter.next()) |pp| {
             var p = pp.*;
@@ -159,73 +90,16 @@ fn solve(s: *state, start: timepoint) usize {
                         continue;
                     }
                 }
-                if (s.board.items[@intCast(usize, @mod((newPos[1] - 1) - @intCast(i32, n), s.maxY - 1) + 1)][@intCast(usize, newPos[0])] == 'v') continue;
-                if (s.board.items[@intCast(usize, @mod((newPos[1] - 1) + @intCast(i32, n), s.maxY - 1) + 1)][@intCast(usize, newPos[0])] == '^') continue;
-                if (s.board.items[@intCast(usize, newPos[1])][@intCast(usize, @mod((newPos[0] - 1) - @intCast(i32, n), s.maxX - 1) + 1)] == '>') continue;
-                if (s.board.items[@intCast(usize, newPos[1])][@intCast(usize, @mod((newPos[0] - 1) + @intCast(i32, n), s.maxX - 1) + 1)] == '<') continue;
+                if (s.board[@intCast(usize, @mod((newPos[1] - 1) - @intCast(i32, n), s.maxY - 1) + 1)][@intCast(usize, newPos[0])] == 'v') continue;
+                if (s.board[@intCast(usize, @mod((newPos[1] - 1) + @intCast(i32, n), s.maxY - 1) + 1)][@intCast(usize, newPos[0])] == '^') continue;
+                if (s.board[@intCast(usize, newPos[1])][@intCast(usize, @mod((newPos[0] - 1) - @intCast(i32, n), s.maxX - 1) + 1)] == '>') continue;
+                if (s.board[@intCast(usize, newPos[1])][@intCast(usize, @mod((newPos[0] - 1) + @intCast(i32, n), s.maxX - 1) + 1)] == '<') continue;
                 q2.put(newPos, {}) catch unreachable;
             }
         }
-        q.deinit();
+        q.clearAndFree();
+        var tmp = q;
         q = q2;
+        q2 = tmp;
     }
-}
-
-fn iterateBoard(s: *state) void {
-    s.maxN += 1;
-    for (s.blizzards.items) |b| {
-        var newPos = b.pos + b.dir.diff();
-        if (newPos[0] == 0) {
-            newPos[0] = s.maxX - 1;
-        } else if (newPos[0] == s.maxX) {
-            newPos[0] = 1;
-        } else if (newPos[1] == 0) {
-            newPos[1] = s.maxY - 1;
-        } else if (newPos[1] == s.maxY) {
-            newPos[1] = 1;
-        }
-        //print("b {any} -> {any}\n", .{ b.pos, newPos });
-        if (s.map.getPtr(timepoint{ .n = s.maxN, .p = newPos })) |c| {
-            c.* = switch (c.*) {
-                '<' => '2',
-                '>' => '2',
-                'v' => '2',
-                '^' => '2',
-                '2' => '3',
-                '3' => '4',
-                else => unreachable,
-            };
-            //print("set to char {s}\n", .{[_]u8{c.*}});
-        } else {
-            s.map.put(timepoint{ .n = s.maxN, .p = newPos }, b.dir.char()) catch unreachable;
-        }
-        b.pos = newPos;
-    }
-    //printMap(s, point{ 0, 0 });
-}
-
-fn printMap(s: *state, pos: point) void {
-    //print("Map at minute {d}\n", .{s.maxN});
-    var foundGuy = false;
-    var y: i32 = 0;
-    while (y <= s.maxY) : (y += 1) {
-        var x: i32 = 0;
-        while (x <= s.maxX) : (x += 1) {
-            if (s.map.get(timepoint{ .n = s.maxN, .p = point{ x, y } })) |c| {
-                print("{s}", .{[_]u8{c}});
-            } else if (@reduce(.And, pos == point{ x, y })) {
-                print("@", .{});
-                foundGuy = true;
-            } else {
-                if (x == 0 or x == s.maxX or y == 0 or y == s.maxY) {
-                    print("#", .{});
-                } else {
-                    print(".", .{});
-                }
-                //unreachable;
-            }
-        }
-        print("\n", .{});
-    }
-    //std.debug.assert(foundGuy);
 }
